@@ -1,57 +1,88 @@
 FROM centos:latest
-MAINTAINER Boyan Botev <boyan_botev@premierinc.com> 
 
 ENV     LD_LIBRARY_PATH=/usr/local/lib
 ENV     CXXFLAGS="-fPIC -march=native -O2"
 ENV	CFLAGS="-fPIC -march=native -O2"
 
-RUN     yum install -y unzip which tar more util-linux-ng passwd openssh-clients openssh-server ed m4 wget sudo git net-tools iproute \
-	bison flex libc-dev make perl-devel python-devel \
-	perl-ExtUtils-Embed readline-devel apr-devel libevent-devel libyaml-devel libcurl-devel bzip2-devel libxml2-devel openssl-devel \
-        centos-release-scl-rh centos-release-scl && yum install -y devtoolset-6-gcc devtoolset-6-gcc-c++ scl-utils
+RUN     pushd /etc/yum.repos.d/ && \
+        sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
+        sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && \
+        popd
 
-#RUN     scl enable devtoolset-6 bash
+RUN     yum -y update && \
+        yum install -y \
+                util-linux \
+                glibc-devel \
+                python2 \
+                python2-devel.x86_64 \
+                postgresql-libs \
+                postgresql-devel \
+                gcc \
+                gcc-c++
 
-        #download source code
-RUN     mkdir -p /usr/src/ &&  cd /usr/src && \ 
-        git clone https://github.com/greenplum-db/gpdb.git && \
-        git clone https://github.com/greenplum-db/gp-xerces.git && \
-        git clone https://github.com/greenplum-db/gporca.git 
+RUN     pip2 install psutil lockfile>=0.9.1 paramiko setuptools pygresql
 
-        #install xerces
-RUN     cd /usr/src/gp-xerces && mkdir build && cd build && \
- 	source /opt/rh/devtoolset-6/enable && \	
+RUN     ls /usr/bin/python2.7 >> /dev/null 2>&1 && ln -s /usr/bin/python2.7 /usr/bin/python
+
+RUN     yum install --enablerepo=powertools -y \
+                unzip \
+                which \
+                tar \
+                util-linux-ng \
+                passwd \
+                openssh-clients \
+                openssh-server \
+                ed \
+                m4 \
+                wget \
+                sudo \
+                git \
+                net-tools \
+                iproute \
+	        bison \
+                flex \
+                make \
+                perl-devel \
+	        perl-ExtUtils-Embed \
+                readline-devel \
+                apr-devel \
+                libevent-devel \
+                libyaml-devel \
+                libcurl-devel \
+                bzip2-devel \
+                libxml2-devel \
+                openssl-devel \
+                scl-utils \
+                cmake3
+
+RUN     mkdir -p /usr/src/
+
+COPY    gpdb /usr/src/gpdb
+COPY    gp-xerces /usr/src/gp-xerces
+COPY    gporca /usr/src/gporca
+
+RUN     cd /usr/src/gp-xerces && mkdir -p build && cd build && \	
         ../configure --prefix=/usr/local && \
         make -j8 && \
-        make install 
-
-RUN	yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm && \
-	yum install -y cmake3
-
-        #install orca      
-RUN     cd /usr/src/gporca && mkdir build && cd build && \
-	git checkout v2.65.0 && \
-	source /opt/rh/devtoolset-6/enable && \	
+        make install
+  
+RUN     cd /usr/src/gporca && mkdir build && cd build && \	
         cmake3 ../ && \
         make -j8 && \
         make install 
 
-        #install gpdb 
 RUN     cd /usr/src/gpdb && mkdir -p /usr/local/gpdb && \
-	git submodule init && git submodule update && \
-	git checkout 5.10.1 && \
-	source /opt/rh/devtoolset-6/enable && \ 	
-        ./configure --with-libxml --enable-orca --prefix=/usr/local/gpdb && \
-#        ./configure --with-perl --with-python --with-libxml --enable-mapreduce --enable-orca --prefix=/usr/local/gpdb && \
+        ./configure --with-perl --with-python --with-libxml --with-gssapi --enable-orca --prefix=/usr/local/gpdb && \ 
         make -j8 && \
         make install 
 
-        #cleanup
 RUN     yum clean all && \ 
-        chmod 755 /usr/local/gpdb/greenplum_path.sh && source /usr/local/gpdb/greenplum_path.sh       
+        # mkdir -p /usr/local/gpMgmt && mv /usr/src/gpdb/gpMgmt /usr/local/gpMgmt && \
+        # rm -rf /usr/src && \
+        chmod 755 /usr/local/gpdb/greenplum_path.sh && source /usr/local/gpdb/greenplum_path.sh
 
+COPY    gpdb-entrypoint.sh gpdb-seg-entrypoint.sh configs/* /tmp/
 
-COPY    * /tmp/
 RUN     cat /tmp/sysctl.conf.add >> /etc/sysctl.conf \
         && cat /tmp/limits.conf.add >> /etc/security/limits.conf \
         && rm -f /tmp/*.add \
@@ -75,7 +106,8 @@ RUN     cat /tmp/sysctl.conf.add >> /etc/sysctl.conf \
         && chown -R gpadmin: /usr/local/gpdb \
  	&& chown gpadmin:gpadmin /usr/local \
         && chown -R root:gpadmin /root \
-	&& localedef -i en_US -f UTF-8 en_US.UTF-8
+        && rm -rf /run/nologin \
+        && PATH=$PATH:/usr/src/gpdb/gpMgmt/bin
 
 USER gpadmin
 ENV LOGNAME gpadmin
@@ -86,7 +118,7 @@ RUN mkdir .ssh && chmod 0700 .ssh && cd .ssh \
         && touch authorized_keys \
         && chmod 0600 auth* id* \
         && chmod 0644 id*.pub \
-        && cat id_rsa.pub | sed 's/@.*$/@master_1/' >> authorized_keys
+        && cat id_rsa.pub | sed 's/@.*$/@master/' >> authorized_keys
 
 ENV MASTER_DATA_DIRECTORY=/gpdata/master/gpseg-1
 
@@ -95,5 +127,3 @@ EXPOSE 5432 22
 VOLUME /gpdata
 
 ENTRYPOINT ["gpdb-entrypoint.sh"]
-
-

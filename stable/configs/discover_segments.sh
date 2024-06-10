@@ -2,17 +2,17 @@
 
 export NAME=segment
 
-echo $(hostname) > /tmp/gpdb-hosts
+echo master > /tmp/gpdb-hosts
 
-for S in `seq 1 9`
+for S in `seq 1 12`
 do
- echo ${NAME}_${S}
- ping -c 1 ${NAME}_${S}
+ echo ${NAME}-${S}
+ ping -c 1 ${NAME}-${S}
  if [[ $? == 0 ]]; then
-  echo "Adding ${NAME}_${S}"
-  echo ${NAME}_${S} >> /tmp/gpdb-hosts
+  echo "Adding ${NAME}-${S}"
+  echo ${NAME}-${S} >> /tmp/gpdb-hosts
  else
-  echo "."
+  echo "..."
  fi
 done
 
@@ -24,12 +24,12 @@ for SS in `seq 1 4`
 do
  for S in `seq 1 4`
  do 
-  ping -c 1 ${NAME}${SS}_${S}
+  ping -c 1 ${NAME}${SS}-${S}
   if [[ $? == 0 ]]; then
-   echo "Adding ${NAME}${SS}_${S}"
-   echo ${NAME}${SS}_${S} >> /tmp/gpdb-hosts
+   echo "Adding ${NAME}${SS}-${S}"
+   echo ${NAME}${SS}-${S} >> /tmp/gpdb-hosts
   else
-   echo "."
+   echo "..."
   fi
  done
 done

@@ -1,19 +1,33 @@
 version: '2'
-services:
-  master:
-    image: gpdb5_centos7
-    ports:
-    - 5432:5432
-    links: 
-    - segment
-    volumes:
-    - pgdata:/gpdata 
 
-  segment:
-    image: gpdb5_centos7
-    entrypoint: gpdb-seg-entrypoint.sh 
+services:
+
+  master:
+    image: eugenekozyrev/repo:greenplum-5.10.1-orca-py2
+    ports:
+      - 5432:5432
+    depends_on:
+      - segment-1
+      - segment-2
+    links: 
+      - segment-1
+      - segment-2
     volumes:
-    - pgdata:/gpdata
+      - ./gpdata:/gpdata
+
+  segment-1:
+    image: eugenekozyrev/repo:greenplum-5.10.1-orca-py2
+    entrypoint: "gpdb-seg-entrypoint.sh"
+    volumes:
+      - ./gpdata:/gpdata
+
+  segment-2:
+    image: eugenekozyrev/repo:greenplum-5.10.1-orca-py2
+    entrypoint: "gpdb-seg-entrypoint.sh"
+    volumes:
+      - ./gpdata:/gpdata
 
 volumes: 
-  pgdata:
+  gpdata:
+
+# docker-compose up -d
