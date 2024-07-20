@@ -1,5 +1,7 @@
 #!/bin/bash 
 
+source /usr/local/gpdb/greenplum_path.sh
+
 # --------------------------------------------------------- #
 # >>>>>>>> Trap signals here for graceful shutdown <<<<<<<< #
 # --------------------------------------------------------- #
@@ -22,7 +24,7 @@ sudo /usr/sbin/sshd &
 
 while true
 do
-  ps aux | ! grep postgres || break
+  ps aux | grep -q postgres || break
   sleep 10
 done
 

@@ -1,4 +1,4 @@
-FROM centos:latest
+FROM centos:8
 
 ENV     LD_LIBRARY_PATH=/usr/local/lib
 ENV     CXXFLAGS="-fPIC -march=native -O2"
@@ -13,16 +13,17 @@ RUN     yum -y update && \
         yum install -y \
                 util-linux \
                 glibc-devel \
-                python2 \
-                python2-devel.x86_64 \
                 postgresql-libs \
                 postgresql-devel \
                 gcc \
-                gcc-c++
+                gcc-c++ \
+                python3-devel \
+                python3-setuptools    
 
-RUN     pip2 install psutil lockfile>=0.9.1 paramiko setuptools pygresql
+RUN     pip3 install psutil setuptools pygresql psycopg2
+#lockfile paramiko            
 
-RUN     ls /usr/bin/python2.7 >> /dev/null 2>&1 && ln -s /usr/bin/python2.7 /usr/bin/python
+RUN     ls /usr/bin/python3.6 >> /dev/null 2>&1 && ln -s /usr/bin/python3.6 /usr/bin/python
 
 RUN     yum install --enablerepo=powertools -y \
                 unzip \
@@ -53,32 +54,21 @@ RUN     yum install --enablerepo=powertools -y \
                 libxml2-devel \
                 openssl-devel \
                 scl-utils \
-                cmake3
+                cmake3 \
+                libzstd-devel \
+                rsync
 
 RUN     mkdir -p /usr/src/
 
-COPY    gpdb /usr/src/gpdb
-COPY    gp-xerces /usr/src/gp-xerces
-COPY    gporca /usr/src/gporca
-
-RUN     cd /usr/src/gp-xerces && mkdir -p build && cd build && \	
-        ../configure --prefix=/usr/local && \
-        make -j8 && \
-        make install
-  
-RUN     cd /usr/src/gporca && mkdir build && cd build && \	
-        cmake3 ../ && \
-        make -j8 && \
-        make install 
+COPY    gpdb-archive-main /usr/src/gpdb
 
 RUN     cd /usr/src/gpdb && mkdir -p /usr/local/gpdb && \
-        ./configure --with-perl --with-python --with-libxml --with-gssapi --enable-orca --prefix=/usr/local/gpdb && \ 
+        # git submodule update --init && \
+        ./configure --disable-orca --with-perl --with-python --with-libxml --with-gssapi --prefix=/usr/local/gpdb && \
         make -j8 && \
-        make install 
+        make -j8 install 
 
-RUN     yum clean all && \ 
-        # mkdir -p /usr/local/gpMgmt && mv /usr/src/gpdb/gpMgmt /usr/local/gpMgmt && \
-        # rm -rf /usr/src && \
+RUN     yum clean all && \
         chmod 755 /usr/local/gpdb/greenplum_path.sh && source /usr/local/gpdb/greenplum_path.sh
 
 COPY    gpdb-entrypoint.sh gpdb-seg-entrypoint.sh configs/* /tmp/
@@ -86,7 +76,7 @@ COPY    gpdb-entrypoint.sh gpdb-seg-entrypoint.sh configs/* /tmp/
 RUN     cat /tmp/sysctl.conf.add >> /etc/sysctl.conf \
         && cat /tmp/limits.conf.add >> /etc/security/limits.conf \
         && rm -f /tmp/*.add \
-	&& cp /usr/local/lib/lib* /usr/local/gpdb/lib/ \
+	# && cp /usr/local/lib/lib* /usr/local/gpdb/lib/ \
         && chmod 777 /tmp/gpinitsystem.conf \
         && mv /tmp/discover_segments.sh /usr/local/bin/discover_segments.sh \
         && chmod 755 /usr/local/bin/discover_segments.sh \

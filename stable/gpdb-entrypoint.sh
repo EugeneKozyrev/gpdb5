@@ -29,6 +29,7 @@ if [ ! -s "$MASTER_DATA_DIRECTORY" ]; then
 export MASTER_HOSTNAME=master
 
 /usr/local/bin/discover_segments.sh
+cat /tmp/gpdb-hosts
 gpssh-exkeys -f /tmp/gpdb-hosts
 sudo mkdir -p /gpdata/master /gpdata/segments
 sudo chown -R gpadmin: /gpdata

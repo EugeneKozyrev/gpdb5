@@ -1,33 +1,29 @@
-version: '2'
+version: '3'
 
 services:
 
   master:
-    image: eugenekozyrev/repo:greenplum-5.10.1-orca-py2
+    hostname: master
+    image: sregistry.mts.ru/grcanal-public/devops/greenplum:py3-no-ocra
     ports:
       - 5432:5432
     depends_on:
-      - segment-1
-      - segment-2
-    links: 
       - segment-1
       - segment-2
     volumes:
       - ./gpdata:/gpdata
 
   segment-1:
-    image: eugenekozyrev/repo:greenplum-5.10.1-orca-py2
+    image: sregistry.mts.ru/grcanal-public/devops/greenplum:py3-no-ocra
     entrypoint: "gpdb-seg-entrypoint.sh"
     volumes:
       - ./gpdata:/gpdata
 
   segment-2:
-    image: eugenekozyrev/repo:greenplum-5.10.1-orca-py2
+    image: sregistry.mts.ru/grcanal-public/devops/greenplum:py3-no-ocra
     entrypoint: "gpdb-seg-entrypoint.sh"
     volumes:
       - ./gpdata:/gpdata
 
 volumes: 
   gpdata:
-
-# docker-compose up -d

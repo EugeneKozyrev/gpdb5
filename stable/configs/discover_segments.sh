@@ -4,7 +4,7 @@ export NAME=segment
 
 echo master > /tmp/gpdb-hosts
 
-for S in `seq 1 12`
+for S in `seq 1 2`
 do
  echo ${NAME}-${S}
  ping -c 1 ${NAME}-${S}
@@ -20,9 +20,9 @@ exit 0
 #
 # Not needed any longer with --scale option in compose 1.13
 #
-for SS in `seq 1 4`
+for SS in `seq 1 2`
 do
- for S in `seq 1 4`
+ for S in `seq 1 2`
  do 
   ping -c 1 ${NAME}${SS}-${S}
   if [[ $? == 0 ]]; then
